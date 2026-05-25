@@ -3,17 +3,7 @@ name: Automated Preprocessing Pipeline
 on:
   push:
     branches: [ main ]
-    paths:
-      - 'preprocessing/automate_Dicoding-Student.py'
-      - '.github/workflows/preprocessing.yml'
-  pull_request:
-    branches: [ main ]
   workflow_dispatch:
-    inputs:
-      reason:
-        description: 'Alasan menjalankan preprocessing manual'
-        required: false
-        default: 'Manual trigger'
 
 jobs:
   preprocessing:
@@ -28,7 +18,6 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.12.7'
-          cache: 'pip'
 
       - name: Install Dependencies
         run: |
@@ -37,38 +26,24 @@ jobs:
 
       - name: Run Preprocessing Script
         run: |
-          cd preprocessing
-          python automate_Dicoding-Student.py
+          python preprocessing/automate_Dicoding-Student.py
 
-      - name: Verify Output Files
+      - name: Verify Output
         run: |
-          echo "=== Verifikasi Output ==="
-          ls -lh heart_disease_preprocessing/
           python -c "
           import pandas as pd
           train = pd.read_csv('heart_disease_preprocessing/train.csv')
           test  = pd.read_csv('heart_disease_preprocessing/test.csv')
-          print(f'Train shape : {train.shape}')
-          print(f'Test shape  : {test.shape}')
-          print(f'Missing vals: {train.isnull().sum().sum()}')
-          assert train.isnull().sum().sum() == 0, 'Missing values found!'
-          assert 'target' in train.columns, 'Target column missing!'
-          print('Semua verifikasi lulus!')
+          print(f'Train: {train.shape}, Test: {test.shape}')
+          assert train.isnull().sum().sum() == 0
+          print('Verifikasi lulus!')
           "
 
-      - name: Upload Preprocessed Dataset as Artifact
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: heart_disease_preprocessing
           path: heart_disease_preprocessing/
           retention-days: 30
 
-      - name: Commit and Push Preprocessed Data
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Actions"
-          git add heart_disease_preprocessing/
-          git diff --staged --quiet || git commit -m "chore: update preprocessed dataset [skip ci]"
-          git push || echo "Nothing to push"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Commit Preprocessed Data
